@@ -1,16 +1,17 @@
 #! /usr/bin/env python
 
 ## Subversion Repository creation tool 
-##for SuSE Linux >=9.3  using mod_dav_svn
+##for SuSE Linux >=9.3  using mod_dav_svn and mod_authz_svn
 ##Author :Cristian Rodriguez R.
 ##License : BSD License 
 
 from optparse import OptionParser
 from pwd import getpwnam
 from grp import getgrnam
-from os import chown , chmod , sep 
-from os.path import exists
+from os import chown , chmod , sep , walk , lchown
+from os.path import exists , join 
 from subprocess import call
+#from svn import core, repos , fs # WITFM ???
 
 cli_parser = OptionParser(usage = "usage: %prog [-n repo] [ -t type ] [-u username]")
 
@@ -35,7 +36,6 @@ if options.repo is None:
      cli_parser.error("You MUST tell me the repository name")
 elif exists(options.location + options.repo):
 	cli_parser.error("Repository already exists")
-
 if options.adminuser is None:
     cli_parser.error("You MUST tell me what username you want")
 try :
@@ -65,30 +65,41 @@ else :
         config_file_auth = open(options.authdir + options.repo + '-svnauthz' ,'w')
         config_file_auth.write(witheverything_auth)
         config_file_auth.close()
-        chown(options.authdir + options.repo + '-svnauthz',0,apachegid)
+        lchown(options.authdir + options.repo + '-svnauthz',0,apachegid)
         chmod(options.authdir + options.repo + '-svnauthz',0640)
         
     except IOError :
         cli_parser.error( "Can't write svnauthz files")
- 
+
 print "Please enter the desired password for: " + options.adminuser  
-admin_user = call(['/usr/sbin/htpasswd2','-c',options.authdir + options.repo + '-passwdfile',options.adminuser])
+admin_user = call(['/usr/sbin/htpasswd2','-c',options.authdir + options.repo + '-passwdfile' ,options.adminuser])
 
 # value > 0 when errors found..
-
 if  not admin_user > 0:
-    chown(options.authdir + options.repo + '-passwdfile',0,apachegid)
-    chmod(options.authdir + options.repo + '-passwdfile',0640)
-    
-create = call(["svnadmin", "create", "--fs-type", options.filesystem, options.location + options.repo])
-
-dirs = ['dav','db','locks']
-
-for dir in dirs:
-    call(["chown" , "-R", options.apache_user + ':'+ options.apache_group, options.location+options.repo + sep + dir])
-
-print "Reloading apache.."   
-restart_apache= call(["/etc/init.d/apache2","reload"])
-print "Basic repository setup complete ..Have a lot of Fun.. ;-)"
-
-    
+	lchown(options.authdir + options.repo + '-passwdfile',0,apachegid)
+	chmod(options.authdir + options.repo + '-passwdfile',0640)
+	
+try:
+		# how to select the filesystem type ? ( a case of WITFM)
+		#core.apr_initialize()
+		#pool = core.svn_pool_create(None)
+		#repos.svn_repos_create(options.location + options.repo, '', '', None, { fs.SVN_FS_CONFIG_FS_TYPE: .options.filesystem }, pool)
+		#core.svn_pool_destroy(pool)
+		#core.apr_terminate()
+		
+		# lets try the dirty way..
+		create = call(["svnadmin", "create", "--fs-type", options.filesystem, options.location + options.repo])
+except OSError:
+	print "Failed to create the repository"
+else:
+	for dire in ['dav','db','locks']:
+		lchown(options.location + options.repo + sep + dire,apacheuid,apachegid)
+		for root, dirs, files in walk(options.location + options.repo + sep + dire , topdown=False):
+			for name in files :
+				lchown(join(root, name),apacheuid,apachegid)
+			for name in dirs:
+				lchown(join(root, name),apacheuid,apachegid)
+				
+	print "Reloading apache.."   
+	restart_apache= call(["/etc/init.d/apache2", "reload"])
+	print "Basic repository setup complete ..Have a lot of Fun.. ;-)"
