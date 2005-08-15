@@ -8,7 +8,7 @@
 from optparse import OptionParser
 from pwd import getpwnam
 from grp import getgrnam
-from os import chown , chmod , sep , walk , lchown
+from os import chmod , sep , walk , lchown
 from os.path import exists , join 
 from subprocess import call
 #from svn import core, repos , fs # WITFM ???
@@ -71,8 +71,11 @@ else :
     except IOError :
         cli_parser.error( "Can't write svnauthz files")
 
-print "Please enter the desired password for: " + options.adminuser  
-admin_user = call(['/usr/sbin/htpasswd2','-c',options.authdir + options.repo + '-passwdfile' ,options.adminuser])
+try :
+	print "Please enter the desired password for: " + options.adminuser  
+	admin_user = call(['/usr/sbin/htpasswd2','-c',options.authdir + options.repo + '-passwdfile' ,options.adminuser])
+except OSError :
+        cli_parser.error( "Can't create password file")
 
 # value > 0 when errors found..
 if  not admin_user > 0:
@@ -90,7 +93,7 @@ try:
 		# lets try the dirty way..
 		create = call(["svnadmin", "create", "--fs-type", options.filesystem, options.location + options.repo])
 except OSError:
-	print "Failed to create the repository"
+	cli_parser.error( "Failed to create the repository")
 else:
 	for dire in ['dav','db','locks']:
 		lchown(options.location + options.repo + sep + dire,apacheuid,apachegid)
