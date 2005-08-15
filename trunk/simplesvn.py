@@ -8,7 +8,8 @@
 from optparse import OptionParser
 from pwd import getpwnam
 from grp import getgrnam
-from os import chown , chmod , sep
+from os import chown , chmod , sep 
+from os.path import exists
 from subprocess import call
 
 cli_parser = OptionParser(usage = "usage: %prog [-n repo] [ -t type ] [-u username]")
@@ -32,6 +33,9 @@ apachegid = getgrnam(options.apache_group)[2]
 # if user don't provide the repository name
 if options.repo is None:
      cli_parser.error("You MUST tell me the repository name")
+elif exists(options.location + options.repo):
+	cli_parser.error("Repository already exists")
+
 if options.adminuser is None:
     cli_parser.error("You MUST tell me what username you want")
 try :
@@ -69,7 +73,9 @@ else :
  
 print "Please enter the desired password for: " + options.adminuser  
 admin_user = call(['/usr/sbin/htpasswd2','-c',options.authdir + options.repo + '-passwdfile',options.adminuser])
-# htpasswd return values > 0 when errors found..
+
+# value > 0 when errors found..
+
 if  not admin_user > 0:
     chown(options.authdir + options.repo + '-passwdfile',0,apachegid)
     chmod(options.authdir + options.repo + '-passwdfile',0640)
