@@ -1,8 +1,8 @@
 [groups]
-{-repository-}-admins = {-adminuser-}
+$repository-admins = $adminuser
 
 [/]
 # Allow everyone read on the entire repository
 #* = r
 
-@{-repository-}-admins = rw
+@$repository-admins = rw

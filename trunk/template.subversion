@@ -1,11 +1,11 @@
-<Location /repos/{-repository-}>
+<Location /repos/$repository >
         DAV svn
-        SVNPath {-location-}{-repository-}
-        AuthzSVNAccessFile {-authdir-}{-repository-}-svnauthz
+        SVNPath $location$repository
+        AuthzSVNAccessFile $authdir$repository-svnauthz
         SSLRequireSSL
         AuthType Basic
-        AuthUserFile {-authdir-}{-repository-}-passwdfile
-        AuthName "Authorization for {-repository-}  required"
+        AuthUserFile $authdir$repository-passwdfile
+        AuthName "Authorization for $repository  required"
         Satisfy Any
         Require valid-user
 </Location>
